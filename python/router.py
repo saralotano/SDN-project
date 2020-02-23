@@ -28,6 +28,7 @@ else:
 
     while True:
         print("Sending keep alive message")
-        # Send keep alive message each ADVERTISEMENT_INTERVAL seconds
+        # Send keep alive message each ADVERTISEMENT_INTERVAL seconds. 
+        # Message format is router_name:priority
         s.sendto(message, (UPD_BROADCAST_IP, UPD_PORT))
         time.sleep(ADVERTISEMENT_INTERVAL)
