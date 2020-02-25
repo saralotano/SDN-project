@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -17,7 +18,8 @@ public class Utils {
 	protected static HashMap<MacAddress,Integer> switchPorts = new HashMap<MacAddress,Integer>();	// da cambiare 
 	protected static HashMap<MacAddress,Integer> clients = new HashMap<MacAddress,Integer>();
 	// List of registered routers ordered by priority
-	protected static List<Router> routers = new ArrayList<Router>();
+	//protected static List<Router> routers = new ArrayList<Router>();
+	protected static HashMap<MacAddress, Router> routers= new HashMap<MacAddress,Router>();
 	protected static Router master;
 	// Time expected for the advertisements
 	protected static int advertisementInterval = 1000;	// in milliseconds (1 sec)
@@ -29,22 +31,28 @@ public class Utils {
 	protected final static short IDLE_TIMEOUT = 10; // in seconds
 	protected final static short HARD_TIMEOUT = (short) (masterDownInterval / 1000);	// in seconds
 	
+	/*
 	protected static boolean checkMaster() {
 		if(master != null) {
+			// Check if the master is still alive
 			if((new Date().getTime() - master.getTimestamp()) <= masterDownInterval)
 				return true;
 			else {	// a new Master has to be chosen
-				master = null;
-				for(Router r:routers) {
-					if((new Date().getTime() - r.getTimestamp()) <= masterDownInterval) {
-						master = r;
-						return true;
-					}	
+				master.setPriority(-1);
+				for(Map.Entry<MacAddress, Router> entry:routers.entrySet()) {
+					if((new Date().getTime() - entry.getValue().getTimestamp()) <= masterDownInterval && 
+							entry.getValue().getPriority() > master.getPriority())
+						master = entry.getValue();
 				}
+				if(master.getPriority() != -1)
+					return true;
+				// no active routers are found
+				master = null;
 			}
 		}
 		return false;
 	}
+	*/
 	
 	protected static void insertClient(MacAddress mac) {
 		if(clients.putIfAbsent(mac, nextNumPort) == null)

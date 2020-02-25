@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
@@ -53,9 +56,16 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.util.FlowModUtils;
 
 public class VirtualAddressController implements IOFMessageListener, IFloodlightModule {
-	
+	private Timer masterDownTimer = new Timer();
+	private TimerTask timerTask = new Election();
 	protected IFloodlightProviderService floodlightProvider; // Reference to the provider
 
+	class Election extends TimerTask {
+		public void run() {
+			System.out.println("A new election is started. A new Masetr is found: " + startElection());
+		}
+	}
+	
 	@Override
 	public String getName() {
 		return VirtualAddressController.class.getSimpleName();
@@ -135,7 +145,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 				if(ip_pkt.getProtocol().compareTo(IpProtocol.UDP) == 0) {
 					UDP udp = (UDP) ip_pkt.getPayload();
 					if(udp.getDestinationPort().compareTo(Utils.PORT_NUMBER) == 0) {
-						// gestire l'adv
+						handleAdvPacket(sw,pi,cntx);
 					}
 				} else 
 					// Non ne sono sicura
@@ -162,7 +172,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		IPv4 ipv4 = (IPv4) eth.getPayload();
 		
 		// Check if the Master is still alive
-		if(!Utils.checkMaster()) {
+		if(Utils.master != null) {
 			System.out.println("The Virtual BR is offline");
 			return;
 		}
@@ -291,4 +301,104 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		
 	}
 
+	private void handleAdvPacket(IOFSwitch sw, OFPacketIn pi,
+			FloodlightContext cntx) {
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		
+		if (! (eth.getPayload() instanceof IPv4))
+			return;
+		// Cast the IP packet
+		IPv4 ipv4 = (IPv4) eth.getPayload();
+		// Double check that the protocol is UDP
+		if(ipv4.getProtocol().compareTo(IpProtocol.UDP) == 0) {
+			UDP udp = (UDP) ipv4.getPayload();
+			IPacket payload = udp.getPayload();
+			System.out.println("Payload retrieved from an adv message: " + payload.toString());
+			String[] adv = payload.toString().split(":");
+			if(adv.length != 2) {
+				System.out.println("There is an error in the adv message format");
+				return;
+			}
+			System.out.println("router name: " + adv[0] + " priority:" + adv[1]);
+			int priority;
+			try {
+				priority = Integer.parseInt(adv[1]);
+			} catch(NumberFormatException ex) {
+				System.out.println("the priority sent from the router can't be cast to an integer");
+				return;
+			}
+			
+			Router router = new Router(ipv4.getSourceAddress(), eth.getSourceMACAddress(), priority, new Date().getTime());
+			
+			// master is null when no router are registered or all routers are down
+			if(Utils.master == null) {
+				Utils.master = router;
+				// set the timer
+				setTimer();
+			}
+			else {
+				// a new adv from current master is arrived
+				if(Utils.master.getMacAddress().compareTo(router.getMacAddress()) == 0) {
+					// reset the timer
+					resetTimer();
+				} else if(Utils.master.getPriority() < router.getPriority()) { // I have to check if its priority is better than the current master
+					Utils.master = router;
+					// reset the timer
+					resetTimer();
+				}
+			}
+			/*
+			// Check if it is a new router, if it is -> add it to the "routers" list otherwise update it
+			for(int i = 0; i < Utils.routers.size(); i++) {
+				Router r = Utils.routers.get(i);
+				if(r.getMacAddress() == eth.getSourceMACAddress()) {
+					r.setTimestamp(router.getTimestamp());
+					break;
+				}
+				if(r.getPriority() < priority) {
+					// Insert the new router in the ordered list
+					Utils.routers.add(i, router);
+					break;
+				}
+			}
+			if(!Utils.routers.contains(router))
+				Utils.routers.add(router);
+			*/
+			Utils.routers.put(router.getMacAddress(), router);
+		}
+	}
+	
+	private boolean startElection() {
+		if(Utils.master != null) {
+			Utils.master.setPriority(-1);
+			for(Map.Entry<MacAddress, Router> entry:Utils.routers.entrySet()) {
+				if((new Date().getTime() - entry.getValue().getTimestamp()) <= Utils.masterDownInterval && 
+						entry.getValue().getPriority() > Utils.master.getPriority())
+					Utils.master = entry.getValue();
+			}
+			if(Utils.master.getPriority() != -1) {
+				resetTimer();
+				return true;
+			}
+			// no active routers are found
+			Utils.master = null;
+		}
+		return false;
+	}
+	
+	private void setTimer() {
+		/*
+		masterDownTimer = new Timer();
+		timerTask = new Election();
+		*/
+		masterDownTimer.schedule(timerTask, Utils.masterDownInterval);
+	}
+	
+	private void resetTimer() {
+		masterDownTimer.cancel();
+		// masterDownTimer.purge();
+		setTimer();
+	}
+	
 }
