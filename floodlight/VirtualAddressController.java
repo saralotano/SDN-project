@@ -134,7 +134,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 	        // Dissect Packet included in Packet-In
 			if (pkt instanceof IPv4) {
 				
-				System.out.printf("Processing IPv4 packet\n");
+				//System.out.printf("Processing IPv4 packet\n");
 				
 				IPv4 ip_pkt = (IPv4) pkt;
 				
@@ -168,13 +168,14 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		IPv4 ipv4 = (IPv4) eth.getPayload();
 		
 		// Check if the Master is still alive
-		if(Utils.master != null) {
+		if(Utils.master == null) {
 			System.out.println("The Virtual BR is offline");
 			return;
 		}
+		/*
 		// Map the client with the switch's outport
 		Utils.insertClient(eth.getSourceMACAddress());
-		
+		*/
 		// Create a flow table modification message to add a rule
 		OFFlowAdd.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		
@@ -216,7 +217,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         
         OFActionOutput output = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
-        	    .setPort(OFPort.of(Utils.switchPorts.get(Utils.master.getMacAddress())))
+        	    .setPort(Utils.switchPorts.get(Utils.master.getMacAddress()))
         	    .build();
         actionList.add(output);
         
@@ -263,9 +264,10 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	    ).build();
         actionListRev.add(setNwDstRev);
         
+        System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
         OFActionOutput outputRev = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
-        	    .setPort(OFPort.of(Utils.clients.get(eth.getSourceMACAddress())))
+        	    .setPort(pi.getMatch().get(MatchField.IN_PORT))
         	    .build();
         actionListRev.add(outputRev);
         
@@ -316,7 +318,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 				System.out.println("There is an error in the adv message format");
 				return;
 			}
-			System.out.println("adv messagee from router: " + adv[0] + " priority:" + adv[1]);
+			//System.out.println("adv messagee from router: " + adv[0] + " priority:" + adv[1]);
 			int priority;
 			try {
 				priority = Integer.parseInt(adv[1]);
@@ -325,7 +327,8 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 				return;
 			}
 			
-			Router router = new Router(ipv4.getSourceAddress(), eth.getSourceMACAddress(), priority, new Date().getTime());
+			Router router = new Router(adv[0],ipv4.getSourceAddress(), eth.getSourceMACAddress(), priority, new Date().getTime());
+			Utils.insertSwitchPort(eth.getSourceMACAddress(), pi.getMatch().get(MatchField.IN_PORT));
 			
 			// master is null when no router are registered or all routers are down
 			if(Utils.master == null) {
@@ -350,22 +353,22 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		}
 	}
 	
-	private boolean startElection() {
+	private String startElection() {
 		if(Utils.master != null) {
 			Utils.master.setPriority(-1);
 			for(Map.Entry<MacAddress, Router> entry:Utils.routers.entrySet()) {
-				if((new Date().getTime() - entry.getValue().getTimestamp()) <= Utils.masterDownInterval && 
+				if((new Date().getTime() - entry.getValue().getTimestamp()) < Utils.masterDownInterval && 
 						entry.getValue().getPriority() > Utils.master.getPriority())
 					Utils.master = entry.getValue();
 			}
 			if(Utils.master.getPriority() != -1) {
 				resetTimer();
-				return true;
+				return Utils.master.getName();
 			}
 			// no active routers are found
 			Utils.master = null;
 		}
-		return false;
+		return "None";
 	}
 	
 	private void setTimer() {
