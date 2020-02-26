@@ -4,16 +4,22 @@ import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 public class Router {
+	private String name;
 	private IPv4Address ipAddress;
 	private MacAddress macAddress;
 	private int priority;
 	private long timestamp;
 	
-	public Router(IPv4Address ipAddress, MacAddress macAddress, int priority, long timestamp) {
+	public Router(String name, IPv4Address ipAddress, MacAddress macAddress, int priority, long timestamp) {
+		this.name = name;
 		this.ipAddress = ipAddress;
 		this.macAddress = macAddress;
 		this.priority = priority;
 		this.timestamp = timestamp;
+	}
+	
+	public String getName() {
+		return name;
 	}
 	
 	public IPv4Address getIpAddress() {

@@ -8,17 +8,21 @@ import java.util.Map;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 public class Utils {
 	// IP and MAC address for our logical load balancer
-	protected final static IPv4Address VIRTUAL_IP = IPv4Address.of("10.0.0.1");
+	protected final static IPv4Address VIRTUAL_IP = IPv4Address.of("10.0.1.1");
 	protected final static MacAddress VIRTUAL_MAC = MacAddress.of("00:00:5E:00:01:01");
 	protected final static TransportPort PORT_NUMBER = TransportPort.of(1234);
-	protected static HashMap<MacAddress,Integer> switchPorts = new HashMap<MacAddress,Integer>();	// da cambiare 
+	// physical ports associated to clients
+	protected static HashMap<MacAddress,OFPort> switchPorts = new HashMap<MacAddress,OFPort>();
+	/*
+	// physical ports associated to the clients
 	protected static HashMap<MacAddress,Integer> clients = new HashMap<MacAddress,Integer>();
-	// List of registered routers ordered by priority
-	//protected static List<Router> routers = new ArrayList<Router>();
+	*/
+	// registered routers
 	protected static HashMap<MacAddress, Router> routers= new HashMap<MacAddress,Router>();
 	protected static Router master;
 	// Time expected for the advertisements
@@ -53,14 +57,13 @@ public class Utils {
 		return false;
 	}
 	*/
-	
+	/*
 	protected static void insertClient(MacAddress mac) {
 		if(clients.putIfAbsent(mac, nextNumPort) == null)
 			nextNumPort ++;
 	}
-	
-	protected static void insertSwitchPort(MacAddress mac) {
-		if(switchPorts.putIfAbsent(mac, nextNumPort) == null)
-			nextNumPort ++;
+	*/
+	protected static void insertSwitchPort(MacAddress mac, OFPort port) {
+		switchPorts.putIfAbsent(mac, port);
 	}
 }

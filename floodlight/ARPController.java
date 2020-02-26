@@ -100,12 +100,6 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 			
 			IPacket pkt = eth.getPayload();
-
-			// Print the source MAC address
-			Long sourceMACHash = Ethernet.toLong(eth.getSourceMACAddress().getBytes());
-			System.out.printf("MAC Address: {%s} seen on switch: {%s}\n",
-			HexString.toHexString(sourceMACHash),
-			sw.getId());
 			
 			// Cast to Packet-In
 			if(msg.getType().compareTo(OFType.PACKET_IN) != 0) {
@@ -117,11 +111,12 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 	        // Dissect Packet included in Packet-In
 			if (eth.isBroadcast() || eth.isMulticast()) {
 				if (pkt instanceof ARP) {
+					System.out.println("[ARP] in port is:" + pi.getMatch().get(MatchField.IN_PORT));
 					// Cast the ARP request
 					ARP arpRequest = (ARP) eth.getPayload();
 					// Process ARP request for Virtual Router
 					if(arpRequest.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
-						System.out.printf("Processing ARP request\n");
+						System.out.println("Processing ARP request");
 						handleARPRequest(sw, pi, cntx);
 						// Interrupt the chain
 						return Command.STOP;
