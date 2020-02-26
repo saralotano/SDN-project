@@ -48,6 +48,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
@@ -56,8 +57,8 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.util.FlowModUtils;
 
 public class VirtualAddressController implements IOFMessageListener, IFloodlightModule {
-	private Timer masterDownTimer = new Timer();
-	private TimerTask timerTask = new Election();
+	private Timer masterDownTimer;
+	private TimerTask timerTask;
 	protected IFloodlightProviderService floodlightProvider; // Reference to the provider
 
 	class Election extends TimerTask {
@@ -129,8 +130,8 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 			sw.getId());
 			
 			// Cast to Packet-In
-			if(!msg.getType().equals("PACKET_IN")) {
-				System.out.println("The message can't be cast to Packet-In");
+			if(msg.getType().compareTo(OFType.PACKET_IN) != 0) {
+				System.out.println("The message can't be cast to Packet-In. Mesasge type is: " + msg.getType());
 				return Command.CONTINUE;
 			}
 			OFPacketIn pi = (OFPacketIn) msg;
@@ -313,9 +314,10 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		// Double check that the protocol is UDP
 		if(ipv4.getProtocol().compareTo(IpProtocol.UDP) == 0) {
 			UDP udp = (UDP) ipv4.getPayload();
-			IPacket payload = udp.getPayload();
-			System.out.println("Payload retrieved from an adv message: " + payload.toString());
-			String[] adv = payload.toString().split(":");
+			Data payload = (Data) udp.getPayload();
+			String data = new String(payload.getData());
+			System.out.println("Payload retrieved from an adv message: " + data);
+			String[] adv = data.split(":");
 			if(adv.length != 2) {
 				System.out.println("There is an error in the adv message format");
 				return;
@@ -388,16 +390,14 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 	}
 	
 	private void setTimer() {
-		/*
 		masterDownTimer = new Timer();
 		timerTask = new Election();
-		*/
 		masterDownTimer.schedule(timerTask, Utils.masterDownInterval);
 	}
 	
 	private void resetTimer() {
 		masterDownTimer.cancel();
-		// masterDownTimer.purge();
+		masterDownTimer.purge();
 		setTimer();
 	}
 	

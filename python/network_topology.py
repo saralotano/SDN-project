@@ -24,63 +24,50 @@ class LinuxRouter( Node ):
 		super( LinuxRouter, self ).terminate()
 
 
-class NetworkTopology( Topo ):
-	"Network composed by two Subnets connected by two LinuxRouters"
+def buildNetworkTopology():
+	net = Mininet(controller=RemoteController)
+	c0 = net.addController('C0', controller=RemoteController, ip="127.0.0.1", port=6653)
 
-	def build( self, **_opts ):
+    # Adding routers
+	r1 = net.addHost('R1', cls=LinuxRouter, prio=255, ip='10.0.1.2/24')
+	r2 = net.addHost('R2', cls=LinuxRouter, prio=100, ip='10.0.1.3/24')
 
-		# Adding routers
-		r1 = self.addNode('R1', cls=LinuxRouter, prio=255, ip='10.0.1.2/24')
-		r2 = self.addNode('R2', cls=LinuxRouter, prio=100, ip='10.0.1.3/24')
+	# Adding hosts
+	h1 = net.addHost('H1', ip='10.0.1.4/24', defaultRoute='via 10.0.1.1')
+	h2 = net.addHost('H2', ip='10.0.1.5/24', defaultRoute='via 10.0.1.1')
+	h3 = net.addHost('H3', ip='10.0.1.6/24', defaultRoute='via 10.0.1.1')
+	h4 = net.addHost('H4', ip='10.0.2.3/24', defaultRoute='via 10.0.2.1')
+	h5 = net.addHost('H5', ip='10.0.2.4/24', defaultRoute='via 10.0.2.1')
 
-		# Adding hosts
-		h1 = self.addHost('H1', ip='10.0.1.4/24', defaultRoute='via 10.0.1.1')
-		h2 = self.addHost('H2', ip='10.0.1.5/24', defaultRoute='via 10.0.1.1')
-		h3 = self.addHost('H3', ip='10.0.1.6/24', defaultRoute='via 10.0.1.1')
-		h4 = self.addHost('H4', ip='10.0.2.3/24', defaultRoute='via 10.0.2.1')
-		h5 = self.addHost('H5', ip='10.0.2.4/24', defaultRoute='via 10.0.2.1')
+	# Adding SDN-enabled switch
+	s1 = net.addSwitch('S1')
 
-		# Adding SDN-enabled switch
-		s1 = self.addSwitch('S1')
+	# Adding Legacy switch
+	s2 = net.addSwitch('S2')
 
-		# Adding Legacy switch
-		s2 = self.addSwitch('S2')
+	# Adding links between network components
+	net.addLink(s1, r1, intfName2='R1-eth0', params2={'ip' : '10.0.1.2/24'})
+	net.addLink(s1, r2, intfName2='R2-eth0', params2={'ip' : '10.0.1.3/24'})
+	net.addLink(h1, s1)
+	net.addLink(h2, s1)
+	net.addLink(h3, s1)		
+	net.addLink(s2, r1, intfName2='R1-eth1', params2={'ip' : '10.0.2.1/24'})
+	net.addLink(s2, r2, intfName2='R2-eth1', params2={'ip' : '10.0.2.2/24'})
+	net.addLink(h4, s2)
+	net.addLink(h5, s2)
 
-		# Adding links between network components
-		self.addLink(s1, r1, intfName2='R1-eth0', params2={'ip' : '10.0.1.2/24'})
-		self.addLink(s1, r2, intfName2='R2-eth0', params2={'ip' : '10.0.1.3/24'})
-		self.addLink(h1, s1)
-		self.addLink(h2, s1)
-		self.addLink(h3, s1)		
-		self.addLink(s2, r1, intfName2='R1-eth1', params2={'ip' : '10.0.2.1/24'})
-		self.addLink(s2, r2, intfName2='R2-eth1', params2={'ip' : '10.0.2.2/24'})
-		self.addLink(h4, s2)
-		self.addLink(h5, s2)
-
-
-def run():
-
-	# Creating Mininet object
-	net = Mininet(controller = RemoteController)
-
-	# Creating controller
-	c0 = net.addController(name = 'C0', controller = RemoteController, ip = '127.0.0.1', port = 6653)
+	# Starting controller
 	c0.start()
 
-	# Creating topology 
-	topo = NetworkTopology()
-
-	# Building Mininet from a Topo object
-	net.buildFromTopo(topo)	
-
 	# Adding controller only to switch S1
-	net.get('S1').start([c0])
-	net.get('S2').start([])
+	s1.start([c0])
+	s2.start([])
 
 	net.start()
 	CLI( net )
 	net.stop()
 
+
 if __name__ == '__main__':
 	setLogLevel( 'info' )
-	run()
+	buildNetworkTopology()
