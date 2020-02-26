@@ -2,7 +2,7 @@
 
 from mininet.topo import Topo
 from mininet.net import Mininet
-from mininet.node import Node, RemoteController
+from mininet.node import Node, OVSKernelSwitch, RemoteController
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
 
@@ -25,7 +25,7 @@ class LinuxRouter( Node ):
 
 
 def buildNetworkTopology():
-	net = Mininet(controller=RemoteController)
+	net = Mininet(topo=None, build=False)
 	c0 = net.addController('C0', controller=RemoteController, ip="127.0.0.1", port=6653)
 
     # Adding routers
@@ -40,10 +40,10 @@ def buildNetworkTopology():
 	h5 = net.addHost('H5', ip='10.0.2.4/24', defaultRoute='via 10.0.2.1')
 
 	# Adding SDN-enabled switch
-	s1 = net.addSwitch('S1')
+	s1 = net.addSwitch('S1', cls=OVSKernelSwitch)
 
 	# Adding Legacy switch
-	s2 = net.addSwitch('S2')
+	s2 = net.addSwitch('S2', cls=OVSKernelSwitch, failMode='standalone')
 
 	# Adding links between network components
 	net.addLink(s1, r1, intfName2='R1-eth0', params2={'ip' : '10.0.1.2/24'})
@@ -56,18 +56,23 @@ def buildNetworkTopology():
 	net.addLink(h4, s2)
 	net.addLink(h5, s2)
 
+	info('**Starting network**\n')
+	net.build()
+	
 	# Starting controller
+	info('**Starting controller**\n')
 	c0.start()
 
 	# Adding controller only to switch S1
+	info('**Adding controller to switch S1**\n')
 	s1.start([c0])
 	s2.start([])
 
-	net.start()
+	#net.start()
 	CLI( net )
 	net.stop()
 
 
 if __name__ == '__main__':
 	setLogLevel( 'info' )
-	buildNetworkTopology()
+buildNetworkTopology()
