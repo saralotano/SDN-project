@@ -108,8 +108,8 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 			sw.getId());
 			
 			// Cast to Packet-In
-			if(!msg.getType().equals(OFType.PACKET_IN)) {
-				System.out.println("The message can't be cast to Packet-In");
+			if(msg.getType().compareTo(OFType.PACKET_IN) != 0) {
+				System.out.println("The message can't be cast to Packet-In. Mesasge type is: " + msg.getType());
 				return Command.CONTINUE;
 			}
 			OFPacketIn pi = (OFPacketIn) msg;
