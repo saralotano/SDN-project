@@ -111,6 +111,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+		System.out.println("Virtual Address Controller is starting");
 		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
 	}
 
@@ -122,12 +123,6 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 			
 			IPacket pkt = eth.getPayload();
-
-			// Print the source MAC address
-			Long sourceMACHash = Ethernet.toLong(eth.getSourceMACAddress().getBytes());
-			System.out.printf("MAC Address: {%s} seen on switch: {%s}\n",
-			HexString.toHexString(sourceMACHash),
-			sw.getId());
 			
 			// Cast to Packet-In
 			if(msg.getType().compareTo(OFType.PACKET_IN) != 0) {
@@ -316,13 +311,12 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 			UDP udp = (UDP) ipv4.getPayload();
 			Data payload = (Data) udp.getPayload();
 			String data = new String(payload.getData());
-			System.out.println("Payload retrieved from an adv message: " + data);
 			String[] adv = data.split(":");
 			if(adv.length != 2) {
 				System.out.println("There is an error in the adv message format");
 				return;
 			}
-			System.out.println("router name: " + adv[0] + " priority:" + adv[1]);
+			System.out.println("adv messagee from router: " + adv[0] + " priority:" + adv[1]);
 			int priority;
 			try {
 				priority = Integer.parseInt(adv[1]);
@@ -335,6 +329,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 			
 			// master is null when no router are registered or all routers are down
 			if(Utils.master == null) {
+				System.out.println("A new master is elected: "+adv[0]);
 				Utils.master = router;
 				// set the timer
 				setTimer();
@@ -346,27 +341,11 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 					resetTimer();
 				} else if(Utils.master.getPriority() < router.getPriority()) { // I have to check if its priority is better than the current master
 					Utils.master = router;
+					System.out.println("A new master is elected: "+adv[0]);
 					// reset the timer
 					resetTimer();
 				}
 			}
-			/*
-			// Check if it is a new router, if it is -> add it to the "routers" list otherwise update it
-			for(int i = 0; i < Utils.routers.size(); i++) {
-				Router r = Utils.routers.get(i);
-				if(r.getMacAddress() == eth.getSourceMACAddress()) {
-					r.setTimestamp(router.getTimestamp());
-					break;
-				}
-				if(r.getPriority() < priority) {
-					// Insert the new router in the ordered list
-					Utils.routers.add(i, router);
-					break;
-				}
-			}
-			if(!Utils.routers.contains(router))
-				Utils.routers.add(router);
-			*/
 			Utils.routers.put(router.getMacAddress(), router);
 		}
 	}

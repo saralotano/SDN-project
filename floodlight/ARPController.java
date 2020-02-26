@@ -100,12 +100,6 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 			
 			IPacket pkt = eth.getPayload();
-
-			// Print the source MAC address
-			Long sourceMACHash = Ethernet.toLong(eth.getSourceMACAddress().getBytes());
-			System.out.printf("MAC Address: {%s} seen on switch: {%s}\n",
-			HexString.toHexString(sourceMACHash),
-			sw.getId());
 			
 			// Cast to Packet-In
 			if(msg.getType().compareTo(OFType.PACKET_IN) != 0) {
