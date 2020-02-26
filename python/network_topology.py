@@ -65,8 +65,8 @@ def buildNetworkTopology():
 
 	# Adding controller only to switch S1
 	info('**Adding controller to switch S1**\n')
-	net.get('S1').start([c0])
-	net.get('S2').start([])
+	s1.start([c0])
+	s2.start([])
 
 	#net.start()
 	CLI( net )
