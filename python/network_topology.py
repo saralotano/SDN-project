@@ -64,7 +64,7 @@ def run():
 	net = Mininet(controller = RemoteController)
 
 	# Creating controller
-	c0 = net.addController(name = 'C0', controller = RemoteController, ip = '127.0.0.1', port = 6653)
+	c0 = net.addController(name = 'C0', controller = RemoteController, ip = '127.0.0.1', port = 1234)
 	c0.start()
 
 	# Creating topology 
