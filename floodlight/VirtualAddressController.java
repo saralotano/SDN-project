@@ -189,7 +189,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         // Create the match structure  
         Match.Builder mb = sw.getOFFactory().buildMatch();
         mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-        .setExact(MatchField.IPV4_DST, Utils.VIRTUAL_IP)
+        .setExact(MatchField.IPV4_DST, ipv4.getDestinationAddress())
         .setExact(MatchField.ETH_DST, Utils.VIRTUAL_MAC);
         
         OFActions actions = sw.getOFFactory().actions();
@@ -210,7 +210,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         OFActionSetField setNwDst = actions.buildSetField()
         	    .setField(
         	        oxms.buildIpv4Dst()
-        	        .setValue(IPv4Address.of(Utils.master.getIpAddress().getBytes()))
+        	        .setValue(ipv4.getDestinationAddress())
         	        .build()
         	    ).build();
         actionList.add(setNwDst);
@@ -241,7 +241,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 
         Match.Builder mbRev = sw.getOFFactory().buildMatch();
         mbRev.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-        .setExact(MatchField.IPV4_SRC, IPv4Address.of(Utils.master.getIpAddress().getBytes()))
+        .setExact(MatchField.IPV4_SRC, ipv4.getDestinationAddress())
         .setExact(MatchField.ETH_SRC, MacAddress.of(Utils.master.getMacAddress().getBytes()))
         .setExact(MatchField.IPV4_DST, ipv4.getSourceAddress());
         
@@ -259,7 +259,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         OFActionSetField setNwDstRev = actions.buildSetField()
         	    .setField(
         	        oxms.buildIpv4Src()
-        	        .setValue(Utils.VIRTUAL_IP)
+        	        .setValue(ipv4.getDestinationAddress())
         	        .build()
         	    ).build();
         actionListRev.add(setNwDstRev);
