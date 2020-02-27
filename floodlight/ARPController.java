@@ -109,28 +109,37 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 			OFPacketIn pi = (OFPacketIn) msg;
 
 	        // Dissect Packet included in Packet-In
-			if (eth.isBroadcast() || eth.isMulticast()) {
-				if (pkt instanceof ARP) {
-					System.out.println("[ARP] in port is:" + pi.getMatch().get(MatchField.IN_PORT));
-					// Cast the ARP request
-					ARP arpRequest = (ARP) eth.getPayload();
+			if (pkt instanceof ARP) {
+				// Cast the ARP request
+				ARP arpMessage = (ARP) eth.getPayload();
+				System.out.println("Target address: "+arpMessage.getTargetProtocolAddress());
+				System.out.println("Sender address: "+arpMessage.getSenderProtocolAddress());
+				if(eth.isBroadcast() || eth.isMulticast()) {	// ARP request
+					//System.out.println("[ARP] in port is:" + pi.getMatch().get(MatchField.IN_PORT));
 					// Process ARP request for Virtual Router
-					if(arpRequest.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
-						System.out.println("Processing ARP request");
-						handleARPRequest(sw, pi, cntx);
-						// Interrupt the chain
-						return Command.STOP;
+					if(arpMessage.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
+						System.out.println("Processing ARP request for VR");
+						handleARPRequestForVR(sw, pi, cntx);
+					} else if(arpMessage.getSenderProtocolAddress().compareTo(Utils.master.getIpAddress()) == 0){
+						// Process ARP request from Virtual Router
+						System.out.println("Processing ARP request from VR");
+						handleARPRequestFromVR(sw, pi, cntx);
 					}
-					
+				} else {	// ARP reply
+					if(arpMessage.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
+						System.out.println("Processing ARP reply to VR");
+						handleARPReplyToVR(sw, pi, cntx);
+					}
 				}
+				// Stop the chaine
+				return Command.STOP;
 			}
-			
 			// Interrupt the chain
 			return Command.CONTINUE;
 
 	}
 	
-	private void handleARPRequest(IOFSwitch sw, OFPacketIn pi,
+	private void handleARPRequestForVR(IOFSwitch sw, OFPacketIn pi,
 			FloodlightContext cntx) {
 
 		// Double check that the payload is ARP
@@ -179,10 +188,127 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 		byte[] packetData = arpReply.serialize();
 		pob.setData(packetData);
 		
-		System.out.printf("Sending out ARP reply\n");
+		//System.out.printf("Sending out ARP reply\n");
 		
 		sw.write(pob.build());
 		
 	}
 
+	private void handleARPRequestFromVR(IOFSwitch sw, OFPacketIn pi,
+			FloodlightContext cntx) {
+
+		// Double check that the payload is ARP
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+				IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		
+		if (! (eth.getPayload() instanceof ARP))
+			return;
+		
+		// Cast the ARP request
+		ARP arpRequest = (ARP) eth.getPayload();
+		/*
+		eth.setSourceMACAddress(Utils.VIRTUAL_MAC);
+		arpRequest.setSenderHardwareAddress(Utils.VIRTUAL_MAC);
+		arpRequest.setSenderProtocolAddress(Utils.VIRTUAL_IP);
+		eth.setPayload(arpRequest);
+		*/
+		
+		System.out.println("Destination Mac Address is Broadcast? "+eth.getDestinationMACAddress());
+		System.out.println("Unknown Targer Mac? "+arpRequest.getTargetHardwareAddress());
+		IPacket newArpRequest = new Ethernet()
+			.setSourceMACAddress(Utils.VIRTUAL_MAC)
+			.setDestinationMACAddress(eth.getDestinationMACAddress())	// Broadcast?
+			.setEtherType(EthType.ARP)
+			.setPriorityCode(eth.getPriorityCode())
+			.setPayload(
+				new ARP()
+				.setHardwareType(ARP.HW_TYPE_ETHERNET)
+				.setProtocolType(ARP.PROTO_TYPE_IP)
+				.setHardwareAddressLength((byte) 6)
+				.setProtocolAddressLength((byte) 4)
+				.setOpCode(ARP.OP_REQUEST)
+				.setSenderHardwareAddress(Utils.VIRTUAL_MAC) // Set my MAC address
+				.setSenderProtocolAddress(Utils.VIRTUAL_IP) // Set my IP address
+				.setTargetHardwareAddress(arpRequest.getTargetHardwareAddress())	// Unknown?
+				.setTargetProtocolAddress(arpRequest.getTargetProtocolAddress()));
+		
+		// Create the Packet-Out and set basic data for it (buffer id and in port)
+		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+		pob.setBufferId(OFBufferId.NO_BUFFER);
+		pob.setInPort(OFPort.ANY);
+		
+		// Send the packet to all the ports except the one from which it receives the ARP req
+		OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();
+		// The method to retrieve the InPort depends on the protocol version 
+		
+		//OFPort inPort = pi.getMatch().get(MatchField.IN_PORT);
+		//actionBuilder.setPort(inPort); 
+		
+		actionBuilder.setPort(OFPort.FLOOD); 
+
+		// Assign the action
+		pob.setActions(Collections.singletonList((OFAction) actionBuilder.build()));
+		
+		// Set the ARP reply as packet data 
+		byte[] packetData = newArpRequest.serialize();
+		pob.setData(packetData);
+		sw.write(pob.build());
+	}
+	
+	private void handleARPReplyToVR(IOFSwitch sw, OFPacketIn pi,
+			FloodlightContext cntx) {
+
+		// Double check that the payload is ARP
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+				IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		
+		if (! (eth.getPayload() instanceof ARP))
+			return;
+		
+		// Cast the ARP request
+		ARP arpReply = (ARP) eth.getPayload();
+		eth.setDestinationMACAddress(Utils.master.getMacAddress());
+		arpReply.setTargetHardwareAddress(Utils.master.getMacAddress());
+		arpReply.setTargetProtocolAddress(Utils.master.getIpAddress());
+		eth.setPayload(arpReply);
+		/*
+		// Generate ARP reply
+		IPacket arpReply = new Ethernet()
+			.setSourceMACAddress(Utils.VIRTUAL_MAC)
+			.setDestinationMACAddress(eth.getDestinationMACAddress()) // Dovrebbe essere quello broadcast
+			.setEtherType(EthType.ARP)
+			.setPriorityCode(eth.getPriorityCode())
+			.setPayload(
+				new ARP()
+				.setHardwareType(ARP.HW_TYPE_ETHERNET)
+				.setProtocolType(ARP.PROTO_TYPE_IP)
+				.setHardwareAddressLength((byte) 6)
+				.setProtocolAddressLength((byte) 4)
+				.setOpCode(ARP.OP_REPLY)
+				.setSenderHardwareAddress(Utils.VIRTUAL_MAC) // Set my MAC address
+				.setSenderProtocolAddress(Utils.VIRTUAL_IP) // Set my IP address
+				.setTargetHardwareAddress(arpRequest.getSenderHardwareAddress())
+				.setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
+		*/
+		// Create the Packet-Out and set basic data for it (buffer id and in port)
+		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+		pob.setBufferId(OFBufferId.NO_BUFFER);
+		pob.setInPort(OFPort.ANY);
+		
+		// Send the packet to all the ports except the one from which it receives the ARP req
+		OFActionOutput.Builder actionBuilder = sw.getOFFactory().actions().buildOutput();
+		// The method to retrieve the InPort depends on the protocol version 
+		//OFPort inPort = OFPort.ANY;
+		actionBuilder.setPort(Utils.switchPorts.get(Utils.master.getMacAddress())); 
+		
+		// Assign the action
+		pob.setActions(Collections.singletonList((OFAction) actionBuilder.build()));
+		
+		// Set the ARP reply as packet data 
+		byte[] packetData = eth.serialize();
+		pob.setData(packetData);
+		
+		sw.write(pob.build());
+	}
+	
 }
