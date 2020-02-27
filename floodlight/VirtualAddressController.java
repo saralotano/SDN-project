@@ -264,7 +264,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	    ).build();
         actionListRev.add(setNwDstRev);
         
-        System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
+        //System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
         OFActionOutput outputRev = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
         	    .setPort(pi.getMatch().get(MatchField.IN_PORT))
