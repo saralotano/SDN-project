@@ -118,25 +118,21 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 			if (pkt instanceof ARP) {
 				// Cast the ARP request
 				ARP arpMessage = (ARP) eth.getPayload();
-				System.out.println("Target address: "+arpMessage.getTargetProtocolAddress());
-				System.out.println("Sender address: "+arpMessage.getSenderProtocolAddress());
-				//if(eth.isBroadcast() || eth.isMulticast()) {	// ARP request
-					//System.out.println("[ARP] in port is:" + pi.getMatch().get(MatchField.IN_PORT));
-					// Process ARP request for Virtual Router
-					if(arpMessage.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
-						System.out.println("Processing ARP request for VR");
-						handleARPRequestForVR(sw, pi, cntx);
-						return Command.STOP;
-					} else if(Utils.routers.containsKey(arpMessage.getSenderHardwareAddress())){
-						// Process ARP request from Virtual Router
-						System.out.println("Processing ARP request from Routers");
-						handleARPRequestFromVR(sw, pi, cntx);
-						return Command.STOP;
-					} 
-						
-				} 
-					
-			//}
+				System.out.println("[ARP] Target address: "+arpMessage.getTargetProtocolAddress());
+				System.out.println("[ARP] Sender address: "+arpMessage.getSenderProtocolAddress());
+				//System.out.println("[ARP] in port is:" + pi.getMatch().get(MatchField.IN_PORT));
+				// Process ARP request for Virtual Router
+				if(arpMessage.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
+					System.out.println("[ARP] Processing ARP request for VR");
+					handleARPRequestForVR(sw, pi, cntx);
+					return Command.STOP;
+				} else if(Utils.routers.containsKey(arpMessage.getSenderHardwareAddress())){
+					// Process ARP request from Virtual Router
+					System.out.println("[ARP]Processing ARP request from Routers");
+					handleARPRequestFromVR(sw, pi, cntx);
+					return Command.STOP;
+				}
+			}
 			// Continue the chain
 			return Command.CONTINUE;
 
