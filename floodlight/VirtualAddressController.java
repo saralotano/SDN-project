@@ -172,15 +172,12 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 			System.out.println("The Virtual BR is offline");
 			return;
 		}
-		/*
-		// Map the client with the switch's outport
-		Utils.insertClient(eth.getSourceMACAddress());
-		*/
+		
 		// Create a flow table modification message to add a rule
 		OFFlowAdd.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		
-        fmb.setIdleTimeout(Utils.IDLE_TIMEOUT);
-        fmb.setHardTimeout(Utils.HARD_TIMEOUT);
+        fmb.setIdleTimeout(Utils.ICMP_IDLE_TIMEOUT);
+        fmb.setHardTimeout(Utils.ICMP_HARD_TIMEOUT);
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setOutPort(OFPort.ANY);
         fmb.setCookie(U64.of(0));
@@ -215,6 +212,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	    ).build();
         actionList.add(setNwDst);
         
+        //System.out.println("[VA]Physical output port numeber is: "+Utils.switchPorts.get(Utils.master.getMacAddress()));
         OFActionOutput output = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
         	    .setPort(Utils.switchPorts.get(Utils.master.getMacAddress()))
@@ -232,10 +230,10 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		// Create a flow table modification message to add a rule
 		OFFlowAdd.Builder fmbRev = sw.getOFFactory().buildFlowAdd();
 		
-		fmbRev.setIdleTimeout(Utils.IDLE_TIMEOUT);
-		fmbRev.setHardTimeout(Utils.HARD_TIMEOUT);
+		fmbRev.setIdleTimeout(Utils.ICMP_IDLE_TIMEOUT);
+		fmbRev.setHardTimeout(Utils.ICMP_HARD_TIMEOUT);
 		fmbRev.setBufferId(OFBufferId.NO_BUFFER);
-		//fmbRev.setOutPort(OFPort.CONTROLLER);
+		fmbRev.setOutPort(OFPort.CONTROLLER);
 		fmbRev.setCookie(U64.of(0));
 		fmbRev.setPriority(FlowModUtils.PRIORITY_MAX);
 
@@ -328,7 +326,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 			}
 			
 			Router router = new Router(adv[0],ipv4.getSourceAddress(), eth.getSourceMACAddress(), priority, new Date().getTime());
-			Utils.insertSwitchPort(eth.getSourceMACAddress(), pi.getMatch().get(MatchField.IN_PORT));
+			Utils.switchPorts.putIfAbsent(eth.getSourceMACAddress(), pi.getMatch().get(MatchField.IN_PORT));
 			
 			// master is null when no router are registered or all routers are down
 			if(Utils.master == null) {

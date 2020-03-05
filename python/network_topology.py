@@ -36,8 +36,8 @@ def buildNetworkTopology():
 	h1 = net.addHost('H1', ip='10.0.1.4/24', defaultRoute='via 10.0.1.1')
 	h2 = net.addHost('H2', ip='10.0.1.5/24', defaultRoute='via 10.0.1.1')
 	h3 = net.addHost('H3', ip='10.0.1.6/24', defaultRoute='via 10.0.1.1')
-	h4 = net.addHost('H4', ip='10.0.2.3/24', defaultRoute='via 10.0.2.1')
-	h5 = net.addHost('H5', ip='10.0.2.4/24', defaultRoute='via 10.0.2.1')
+	h4 = net.addHost('H4', ip='10.0.2.3/24', defaultRoute='via 10.0.2.2')
+	h5 = net.addHost('H5', ip='10.0.2.4/24', defaultRoute='via 10.0.2.2')
 
 	# Adding SDN-enabled switch
 	s1 = net.addSwitch('S1', cls=OVSKernelSwitch)
