@@ -133,25 +133,21 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 
 	        // Dissect Packet included in Packet-In
 			if (pkt instanceof IPv4) {
-				
 				//System.out.printf("Processing IPv4 packet\n");
-				
 				IPv4 ip_pkt = (IPv4) pkt;
-				
 				if(ip_pkt.getProtocol().compareTo(IpProtocol.UDP) == 0) {
 					UDP udp = (UDP) ip_pkt.getPayload();
 					if(udp.getDestinationPort().compareTo(Utils.PORT_NUMBER) == 0) {
+						// adv message from router
 						handleAdvPacket(sw,pi,cntx);
 					}
-				} else 
-					// Non ne sono sicura
+				} else {
+					System.out.println("[VAC] ICMP message");
 					handleIPPacket(sw, pi, cntx);
-					
-				// Interrupt the chain
+				}
 				return Command.STOP;
 			}
-			
-			// Interrupt the chain
+			// Continue the chain
 			return Command.CONTINUE;
 	}
 
@@ -203,7 +199,8 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	    )
         	    .build();
         actionList.add(setDlDst);
-
+        /*
+        // Destination non dovrebbe cambiare, è sempre 10.0.2.3?
         OFActionSetField setNwDst = actions.buildSetField()
         	    .setField(
         	        oxms.buildIpv4Dst()
@@ -211,7 +208,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	        .build()
         	    ).build();
         actionList.add(setNwDst);
-        
+        */
         //System.out.println("[VA]Physical output port numeber is: "+Utils.switchPorts.get(Utils.master.getMacAddress()));
         OFActionOutput output = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
@@ -240,7 +237,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         Match.Builder mbRev = sw.getOFFactory().buildMatch();
         mbRev.setExact(MatchField.ETH_TYPE, EthType.IPv4)
         .setExact(MatchField.IPV4_SRC, ipv4.getDestinationAddress())
-        .setExact(MatchField.ETH_SRC, MacAddress.of(Utils.master.getMacAddress().getBytes()))
+        //.setExact(MatchField.ETH_SRC, MacAddress.of(Utils.master.getMacAddress().getBytes()))
         .setExact(MatchField.IPV4_DST, ipv4.getSourceAddress());
         
         ArrayList<OFAction> actionListRev = new ArrayList<OFAction>();
@@ -253,7 +250,8 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	    )
         	    .build();
         actionListRev.add(setDlDstRev);
-
+/*
+        // Uguale a prima, la destinazione non dovrebbe cambiare
         OFActionSetField setNwDstRev = actions.buildSetField()
         	    .setField(
         	        oxms.buildIpv4Src()
@@ -261,7 +259,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         	        .build()
         	    ).build();
         actionListRev.add(setNwDstRev);
-        
+*/       
         //System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
         OFActionOutput outputRev = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
