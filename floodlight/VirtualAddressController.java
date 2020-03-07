@@ -175,54 +175,60 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         fmb.setIdleTimeout(Utils.ICMP_IDLE_TIMEOUT);
         fmb.setHardTimeout(Utils.ICMP_HARD_TIMEOUT);
         fmb.setBufferId(OFBufferId.NO_BUFFER);
-        fmb.setOutPort(OFPort.ANY);
+        //fmb.setOutPort(OFPort.ANY);
         fmb.setCookie(U64.of(0));
         fmb.setPriority(FlowModUtils.PRIORITY_MAX);
 
         // Create the match structure  
         Match.Builder mb = sw.getOFFactory().buildMatch();
-        mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-        .setExact(MatchField.IPV4_DST, ipv4.getDestinationAddress())
-        .setExact(MatchField.ETH_DST, Utils.VIRTUAL_MAC);
+        mb.setExact(MatchField.ETH_DST, Utils.VIRTUAL_MAC)
+        .setExact(MatchField.ETH_TYPE, EthType.IPv4);
+        //.setExact(MatchField.IPV4_DST, ipv4.getDestinationAddress())
         
         OFActions actions = sw.getOFFactory().actions();
         // Create the actions (Change DST mac and IP addresses and set the out-port)
-        ArrayList<OFAction> actionList = new ArrayList<OFAction>();
+        ArrayList<OFAction> actionListOut = new ArrayList<OFAction>();
         
         OFOxms oxms = sw.getOFFactory().oxms();
         
-        OFActionSetField setDlDst = actions.buildSetField()
+        if(ipv4.getDestinationAddress().compareTo(Utils.VIRTUAL_IP) == 0 ||
+        		ipv4.getSourceAddress().compareTo(Utils.master.getIpAddress()) == 0) {
+        	
+        	mb.setExact(MatchField.IPV4_DST, Utils.VIRTUAL_IP);
+        	
+        	OFActionSetField setIpDst = actions.buildSetField()
+            	    .setField(
+            	        oxms.buildIpv4Dst()
+            	        .setValue(Utils.master.getIpAddress())
+            	        .build()
+            	    )
+            	    .build();
+            actionListOut.add(setIpDst);
+        }
+        
+        OFActionSetField setEthDst = actions.buildSetField()
         	    .setField(
         	        oxms.buildEthDst()
-        	        .setValue(MacAddress.of(Utils.master.getMacAddress().getBytes()))
+        	        .setValue(Utils.master.getMacAddress())
         	        .build()
         	    )
         	    .build();
-        actionList.add(setDlDst);
-        /*
-        // Destination non dovrebbe cambiare, è sempre 10.0.2.3?
-        OFActionSetField setNwDst = actions.buildSetField()
-        	    .setField(
-        	        oxms.buildIpv4Dst()
-        	        .setValue(ipv4.getDestinationAddress())
-        	        .build()
-        	    ).build();
-        actionList.add(setNwDst);
-        */
+        actionListOut.add(setEthDst);
+        
         //System.out.println("[VA]Physical output port numeber is: "+Utils.switchPorts.get(Utils.master.getMacAddress()));
         OFActionOutput output = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
         	    .setPort(Utils.switchPorts.get(Utils.master.getMacAddress()))
         	    .build();
-        actionList.add(output);
+        actionListOut.add(output);
         
         
-        fmb.setActions(actionList);
+        fmb.setActions(actionListOut);
         fmb.setMatch(mb.build());
 
         sw.write(fmb.build());
         
-        // Reverse Rule to change the source address and mask the action of the controller
+     	//Set the rules for the ipv4 packets coming from NetB in NetA
         
 		// Create a flow table modification message to add a rule
 		OFFlowAdd.Builder fmbRev = sw.getOFFactory().buildFlowAdd();
@@ -230,57 +236,17 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 		fmbRev.setIdleTimeout(Utils.ICMP_IDLE_TIMEOUT);
 		fmbRev.setHardTimeout(Utils.ICMP_HARD_TIMEOUT);
 		fmbRev.setBufferId(OFBufferId.NO_BUFFER);
-		fmbRev.setOutPort(OFPort.CONTROLLER);
+		//fmbRev.setOutPort(OFPort.CONTROLLER);
 		fmbRev.setCookie(U64.of(0));
 		fmbRev.setPriority(FlowModUtils.PRIORITY_MAX);
 
-        Match.Builder mbRev = sw.getOFFactory().buildMatch();
-        mbRev.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-        .setExact(MatchField.IPV4_SRC, ipv4.getDestinationAddress())
-        //.setExact(MatchField.ETH_SRC, MacAddress.of(Utils.master.getMacAddress().getBytes()))
-        .setExact(MatchField.IPV4_DST, ipv4.getSourceAddress());
-        
-        ArrayList<OFAction> actionListRev = new ArrayList<OFAction>();
-        
-        OFActionSetField setDlDstRev = actions.buildSetField()
-        	    .setField(
-        	        oxms.buildEthSrc()
-        	        .setValue(Utils.VIRTUAL_MAC)
-        	        .build()
-        	    )
-        	    .build();
-        actionListRev.add(setDlDstRev);
-/*
-        // Uguale a prima, la destinazione non dovrebbe cambiare
-        OFActionSetField setNwDstRev = actions.buildSetField()
-        	    .setField(
-        	        oxms.buildIpv4Src()
-        	        .setValue(ipv4.getDestinationAddress())
-        	        .build()
-        	    ).build();
-        actionListRev.add(setNwDstRev);
-*/       
-        //System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
-        OFActionOutput outputRev = actions.buildOutput()
-        	    .setMaxLen(0xFFffFFff)
-        	    .setPort(pi.getMatch().get(MatchField.IN_PORT))
-        	    .build();
-        actionListRev.add(outputRev);
-        
-        fmbRev.setActions(actionListRev);
-        fmbRev.setMatch(mbRev.build());
-        
-        sw.write(fmbRev.build());
-
-        // If we do not apply the same action to the packet we have received and we send it back the first packet will be lost
+		// If we do not apply the same action to the packet we have received and we send it back the first packet will be lost
         
 		// Create the Packet-Out and set basic data for it (buffer id and in port)
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
 		pob.setBufferId(pi.getBufferId());
 		pob.setInPort(OFPort.ANY);
 		
-		// Assign the action
-		pob.setActions(actionList);
 		
 		// Packet might be buffered in the switch or encapsulated in Packet-In 
 		// If the packet is encapsulated in Packet-In sent it back
@@ -290,8 +256,108 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
             pob.setData(packetData);
             
 		} 
-				
+		
+		
+		ArrayList<OFAction> actionListIn = new ArrayList<OFAction>();
+		Match.Builder mbIn = sw.getOFFactory().buildMatch();
+		
+		OFActionSetField setEthSrcIn = actions.buildSetField()
+        	    .setField(
+        	        oxms.buildEthSrc()
+        	        .setValue(Utils.VIRTUAL_MAC)
+        	        .build()
+        	    )
+        	    .build();
+        actionListIn.add(setEthSrcIn);
+        
+        if(ipv4.getDestinationAddress().compareTo(Utils.VIRTUAL_IP) == 0 ||
+        		ipv4.getSourceAddress().compareTo(Utils.master.getIpAddress()) == 0) {
+        	
+        	mbIn.setExact(MatchField.IPV4_SRC, Utils.master.getIpAddress());
+        	
+        	OFActionSetField setIpSrc = actions.buildSetField()
+            	    .setField(
+            	        oxms.buildIpv4Src()
+            	        .setValue(Utils.VIRTUAL_IP)
+            	        .build()
+            	    )
+            	    .build();
+            actionListIn.add(setIpSrc);
+        }
+        
+		// Reverse Rule
+		if(eth.getDestinationMACAddress().compareTo(Utils.VIRTUAL_MAC) == 0) {
+	        
+	        mbIn.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+	        .setExact(MatchField.ETH_DST, eth.getSourceMACAddress());
+	        /*
+	        if(ipv4.getDestinationAddress().compareTo(Utils.VIRTUAL_IP) == 0 ) {
+	        	
+	        	mbIn.setExact(MatchField.IPV4_SRC, Utils.master.getIpAddress());
+	        	
+	        	OFActionSetField setIpSrc = actions.buildSetField()
+	            	    .setField(
+	            	        oxms.buildIpv4Src()
+	            	        .setValue(Utils.VIRTUAL_IP)
+	            	        .build()
+	            	    )
+	            	    .build();
+	            actionListIn.add(setIpSrc);
+	        }*/
+	        
+	        //System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
+	        OFActionOutput outputIn = actions.buildOutput()
+	        	    .setMaxLen(0xFFffFFff)
+	        	    .setPort(pi.getMatch().get(MatchField.IN_PORT))
+	        	    .build();
+	        actionListIn.add(outputIn);
+	        
+	        // Assign the actionList for the packets addressed to the Virtual MAC
+	        pob.setActions(actionListOut);
+	        
+		} else {
+			
+			//caso in cui il packet_in è relativo ad un pacchetto ipv4 (ping) che arriva dalla rete B 
+			//verso un host della rete A
+			
+			mbIn.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+	        .setExact(MatchField.ETH_DST, eth.getDestinationMACAddress() ); 
+	        /*
+			if(ipv4.getSourceAddress().compareTo(Utils.master.getIpAddress()) == 0) {
+	        	
+	        	mbIn.setExact(MatchField.IPV4_SRC, Utils.master.getIpAddress());
+	        	
+	        	OFActionSetField setIpSrc = actions.buildSetField()
+	            	    .setField(
+	            	        oxms.buildIpv4Src()
+	            	        .setValue(Utils.VIRTUAL_IP)
+	            	        .build()
+	            	    )
+	            	    .build();
+	            actionListIn.add(setIpSrc);
+	        }*/
+			
+			//Flood perchè in questo caso non ho traccia della porta relativa all'host destinatario
+	        //System.out.println("[VA]Physical port number is "+pi.getMatch().get(MatchField.IN_PORT));
+	        OFActionOutput outputRev = actions.buildOutput()
+	        	    .setMaxLen(0xFFffFFff)
+	        	    .setPort(OFPort.FLOOD)
+	        	    .build();
+	        actionListIn.add(outputRev);
+	        
+	        // Assign the action for the incoming packets from the routers
+			pob.setActions(actionListIn);
+		}
+	  
+        fmbRev.setActions(actionListIn);
+        fmbRev.setMatch(mbIn.build());
+        
+        //send the second FlowMode packet
+        sw.write(fmbRev.build());
+	
+        //send the packet_out
 		sw.write(pob.build());
+			
 		
 	}
 
