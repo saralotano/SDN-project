@@ -23,7 +23,7 @@ public class Utils {
 	protected static Router master;
 	// Time expected for the advertisements
 	protected static int advertisementInterval = 1000;	// in milliseconds (1 sec)
-	private static int numAdv = 3;
+	protected static int numAdv = 3;
 	// Time after that the router is considered down
 	protected static int masterDownInterval = numAdv * advertisementInterval;	// in milliseconds
 	// Rule's timeouts
