@@ -81,9 +81,9 @@ public class RestController implements IFloodlightModule, IRestController {
 	        Router router = new Router(context);
 	        
 	        // Add get network info
-	        router.attach("/controller/network/info/json", GetNetworkInfo.class);
+	        router.attach("/network/info/json", GetNetworkInfo.class);
 	        // Add change numAdv variable
-	        router.attach("/controller/network/numAdv/json", ChangeNumAdv.class);
+	        router.attach("/network/numadv/json", ChangeNumAdv.class);
 	        return router;
 	    }
 	 
@@ -111,7 +111,7 @@ public class RestController implements IFloodlightModule, IRestController {
 			info.put("The Master is: ", Utils.master.getName());
 		else 
 			info.put("The Master is: ", "None");
-		info.put("The number of advertisement before the Master is considered down are: ", Utils.numAdv);
+		info.put("The numAdv is: ", Utils.numAdv);
 		info.put("The advertisement Interval is (s): ", Utils.advertisementInterval/1000);
 		info.put("The master down interval is (s): ", Utils.masterDownInterval/1000);
 		info.put("The ICMP Idle Timeout is: ", Utils.ICMP_IDLE_TIMEOUT);
@@ -123,8 +123,10 @@ public class RestController implements IFloodlightModule, IRestController {
 	
 	@Override
 	public void setNumAdv(int newValue){
+		if(newValue <= 0)
+			return;
 		Utils.numAdv = (short) newValue;
-		System.out.println("Number Advertisement value changed to " + newValue + "\n");		
+		System.out.println("Number Advertisement value changed to " + newValue);		
 	}
 	
 	private class RouterInfo {

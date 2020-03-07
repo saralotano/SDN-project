@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ChangeNumAdv extends ServerResource{
 	@Post("json")
 	public String store(String fmJson) {
-	    
+		System.out.println("POST");
         // Check if the payload is provided
         if(fmJson == null){
             return new String("No attributes");
@@ -22,14 +22,18 @@ public class ChangeNumAdv extends ServerResource{
 		try {
 			JsonNode root = mapper.readTree(fmJson);
 			
-			// Get the field numAdvertisement
-			int newValue = Integer.parseInt(root.get("numAdvertisement").asText());
-			
+			//Check if the name field is correct
+			if(root.get("numadv") == null)
+				return new String("Wrong Format.The name has to be 'numadv'");
+			// Get the field num_adv
+			int newValue = Integer.parseInt(root.get("numadv").asText());
 			IRestController rc = (IRestController) getContext().getAttributes().get(IRestController.class.getCanonicalName());
 			
 			rc.setNumAdv(newValue);
-			
-		} catch (IOException e) {
+		
+		}catch(NumberFormatException e) {
+			e.printStackTrace();
+		}catch (IOException e) {
 			e.printStackTrace();
 		}
 		
