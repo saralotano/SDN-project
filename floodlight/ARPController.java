@@ -150,7 +150,13 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 		
 		// Cast the ARP request
 		ARP arpRequest = (ARP) eth.getPayload();
-				
+		
+		// Check if the Master is still alive
+		if(Utils.master == null) {
+			System.out.println("The Virtual BR is offline");
+			return;
+		}
+		
 		// Generate ARP reply
 		IPacket arpReply = new Ethernet()
 			.setSourceMACAddress(Utils.VIRTUAL_MAC)
