@@ -2,6 +2,7 @@ package net.floodlightcontroller.task2;
 
 import java.io.IOException;
 
+import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
 
@@ -11,7 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class ChangeNumAdv extends ServerResource{
 	@Post("json")
 	public String store(String fmJson) {
-		System.out.println("POST");
+		//System.out.println("POST");
         // Check if the payload is provided
         if(fmJson == null){
             return new String("No attributes");
