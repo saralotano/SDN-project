@@ -5,25 +5,15 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.restlet.Context;
 import org.restlet.Restlet;
-import org.restlet.resource.Get;
-import org.restlet.resource.ServerResource;
 import org.restlet.routing.Router;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.web.ControllerSummaryResource;
-import net.floodlightcontroller.core.web.ControllerSwitchesResource;
-import net.floodlightcontroller.core.web.LoadedModuleLoaderResource;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestletRoutable;
 
