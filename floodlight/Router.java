@@ -3,6 +3,8 @@ package net.floodlightcontroller.task2;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 
+//Router information
+
 public class Router {
 	private String name;
 	private IPv4Address ipAddress;
