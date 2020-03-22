@@ -1,19 +1,15 @@
 package net.floodlightcontroller.task2;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
-import org.projectfloodlight.openflow.protocol.OFMatchBmap;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
@@ -22,14 +18,9 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.util.HexString;
-import org.python.constantine.platform.darwin.IPProto;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -41,9 +32,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.util.FlowModUtils;
 
 public class ARPController implements IOFMessageListener, IFloodlightModule {
@@ -57,25 +46,21 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 
 	@Override
 	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -88,7 +73,6 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 
 	@Override
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 	}
 
@@ -118,15 +102,18 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 			if (pkt instanceof ARP) {
 				// Cast the ARP request
 				ARP arpMessage = (ARP) eth.getPayload();
+				Utils.switchPorts.putIfAbsent(eth.getSourceMACAddress(), pi.getMatch().get(MatchField.IN_PORT));
+				
 				System.out.println("[ARP] Target address: "+arpMessage.getTargetProtocolAddress());
 				System.out.println("[ARP] Sender address: "+arpMessage.getSenderProtocolAddress());
-				//System.out.println("[ARP] in port is:" + pi.getMatch().get(MatchField.IN_PORT));
+				
 				// Process ARP request for Virtual Router
 				if(arpMessage.getTargetProtocolAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
 					System.out.println("[ARP] Processing ARP request for VR");
 					handleARPRequestForVR(sw, pi, cntx);
 					return Command.STOP;
 				} else if(Utils.routers.containsKey(arpMessage.getSenderHardwareAddress())){
+					
 					// Process ARP request from Virtual Router
 					System.out.println("[ARP]Processing ARP request from Routers");
 					handleARPRequestFromVR(sw, pi, cntx);
@@ -150,12 +137,6 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 		
 		// Cast the ARP request
 		ARP arpRequest = (ARP) eth.getPayload();
-		
-		// Check if the Master is still alive
-		if(Utils.master == null) {
-			System.out.println("The Virtual BR is offline");
-			return;
-		}
 		
 		// Generate ARP reply
 		IPacket arpReply = new Ethernet()
@@ -192,9 +173,7 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
 		// Set the ARP reply as packet data 
 		byte[] packetData = arpReply.serialize();
 		pob.setData(packetData);
-		
-		//System.out.printf("Sending out ARP reply\n");
-		
+				
 		sw.write(pob.build());
 		
 	}
@@ -224,10 +203,10 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
         // Create the match structure  
         Match.Builder mb = sw.getOFFactory().buildMatch();
         mb.setExact(MatchField.ETH_TYPE, EthType.ARP)
-        .setExact(MatchField.ETH_SRC, arpRequest.getSenderHardwareAddress());
+        .setExact(MatchField.ETH_SRC, eth.getSourceMACAddress());
         
         OFActions actions = sw.getOFFactory().actions();
-        // Create the actions (Change DST mac and IP addresses and set the out-port)
+        // Create the actions (Change SRC MAC and IP addresses and set the out-port)
         ArrayList<OFAction> actionList = new ArrayList<OFAction>();
         
         OFOxms oxms = sw.getOFFactory().oxms();
@@ -271,7 +250,7 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
         sw.write(fmb.build());
       
         
-        // Reverse Rule to change the source address and mask the action of the controller
+        // Reverse Rule to change the destination MAC and IP addresses and mask the action of the controller
         
 		// Create a flow table modification message to add a rule
 		OFFlowAdd.Builder fmbRev = sw.getOFFactory().buildFlowAdd();
@@ -314,8 +293,7 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
         	        .build()
         	    ).build();
         actionListRev.add(setArpTpaRev);
-        
-        System.out.println("[ARP] Physical req port number is "+pi.getMatch().get(MatchField.IN_PORT));
+
         OFActionOutput outputRev = actions.buildOutput()
         	    .setMaxLen(0xFFffFFff)
         	    .setPort(pi.getMatch().get(MatchField.IN_PORT))
@@ -334,7 +312,6 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
  		pob.setInPort(OFPort.ANY);
  		
         // Assign the action
- 		System.out.println("Action List: "+actionList.toString());
  		pob.setActions(actionList);
  		
  		// Packet might be buffered in the switch or encapsulated in Packet-In 
@@ -348,6 +325,6 @@ public class ARPController implements IOFMessageListener, IFloodlightModule {
  				
  		sw.write(pob.build());
         		
-	}	
+	}
 	
 }
