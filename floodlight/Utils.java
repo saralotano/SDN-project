@@ -16,7 +16,7 @@ public class Utils {
 	// Switch physical ports
 	protected static HashMap<MacAddress,OFPort> switchPorts = new HashMap<MacAddress,OFPort>();
 	// Registered routers
-	protected static HashMap<MacAddress, Router> routers= new HashMap<MacAddress,Router>();
+	protected static HashMap<MacAddress, Router> routers = new HashMap<MacAddress,Router>();
 	protected static Router master;
 	// Time expected for the advertisements
 	protected static int advertisementInterval = 1000;	// in milliseconds (1 sec)
