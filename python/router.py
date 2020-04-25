@@ -2,8 +2,8 @@ import socket
 import time
 import sys
 
-UPD_BROADCAST_IP = '10.0.1.255'
-UPD_PORT = 1234
+UDP_BROADCAST_IP = '10.0.1.255'
+UDP_PORT = 1234
 ADVERTISEMENT_INTERVAL = 1 	
 
 
@@ -30,5 +30,5 @@ else:
         print("Sending keep alive message")
         # Send keep alive message each ADVERTISEMENT_INTERVAL seconds. 
         # Message format is router_name:priority
-        s.sendto(message, (UPD_BROADCAST_IP, UPD_PORT))
+        s.sendto(message, (UDP_BROADCAST_IP, UDP_PORT))
         time.sleep(ADVERTISEMENT_INTERVAL)

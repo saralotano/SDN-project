@@ -5,25 +5,15 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.restlet.Context;
 import org.restlet.Restlet;
-import org.restlet.resource.Get;
-import org.restlet.resource.ServerResource;
 import org.restlet.routing.Router;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.web.ControllerSummaryResource;
-import net.floodlightcontroller.core.web.ControllerSwitchesResource;
-import net.floodlightcontroller.core.web.LoadedModuleLoaderResource;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestletRoutable;
 
@@ -50,7 +40,7 @@ public class RestController implements IFloodlightModule, IRestController {
 		Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
 		// Add among the dependences the RestApi service
 	    l.add(IRestApiService.class);
-		return null;
+		return l;
 	}
 
 	@Override
@@ -105,19 +95,19 @@ public class RestController implements IFloodlightModule, IRestController {
 			net.floodlightcontroller.task2.Router r = Utils.routers.get(mac);
 			routers.put(r.getName(), new RouterInfo(r.getIpAddress().toString(),r.getMacAddress().toString(),r.getPriority()));
 		}
-		info.put("The registered routers are: ", routers);
+		info.put("The registered routers are", routers);
 
 		if(Utils.master != null)
-			info.put("The Master is: ", Utils.master.getName());
+			info.put("The Master is", Utils.master.getName());
 		else 
-			info.put("The Master is: ", "None");
-		info.put("The numAdv is: ", Utils.numAdv);
-		info.put("The advertisement Interval is (s): ", Utils.advertisementInterval/1000);
-		info.put("The master down interval is (s): ", Utils.masterDownInterval/1000);
-		info.put("The ICMP Idle Timeout is: ", Utils.ICMP_IDLE_TIMEOUT);
-		info.put("The ICMP Hard Timeout is: ", Utils.ICMP_HARD_TIMEOUT);
-		info.put("The ARP Idle Timeout is: ", Utils.ARP_IDLE_TIMEOUT);
-		info.put("The ARP Hard Timeout is: ", Utils.ARP_HARD_TIMEOUT);
+			info.put("The Master is", "None");
+		info.put("The numAdv is", Utils.numAdv);
+		info.put("The advertisement Interval is (s)", Utils.advertisementInterval/1000);
+		info.put("The master down interval is (s)", Utils.masterDownInterval/1000);
+		info.put("The ICMP Idle Timeout is", Utils.ICMP_IDLE_TIMEOUT);
+		info.put("The ICMP Hard Timeout is", Utils.ICMP_HARD_TIMEOUT);
+		info.put("The ARP Idle Timeout is", Utils.ARP_IDLE_TIMEOUT);
+		info.put("The ARP Hard Timeout is", Utils.ARP_HARD_TIMEOUT);
 		return info;
 	} 
 	
@@ -125,7 +115,7 @@ public class RestController implements IFloodlightModule, IRestController {
 	public void setNumAdv(int newValue){
 		if(newValue <= 0)
 			return;
-		Utils.numAdv = (short) newValue;
+		Utils.numAdv = newValue;
 		System.out.println("Number Advertisement value changed to " + newValue);		
 	}
 	

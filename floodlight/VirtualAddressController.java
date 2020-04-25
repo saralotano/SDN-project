@@ -1,56 +1,41 @@
 package net.floodlightcontroller.task2;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFMatchBmap;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetDlDst;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.util.HexString;
-import org.python.constantine.platform.darwin.IPProto;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
@@ -63,7 +48,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 
 	class Election extends TimerTask {
 		public void run() {
-			System.out.println("A new election is started. A new Masetr is found: " + startElection());
+			System.out.println("A new election is started. A new Master is found: " + startElection());
 		}
 	}
 	
@@ -121,7 +106,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 			
 			// Cast to Packet-In
 			if(msg.getType().compareTo(OFType.PACKET_IN) != 0) {
-				System.out.println("The message can't be cast to Packet-In. Mesasge type is: " + msg.getType());
+				System.out.println("The message can't be cast to Packet-In. Message type is: " + msg.getType());
 				return Command.CONTINUE;
 			}
 			OFPacketIn pi = (OFPacketIn) msg;
@@ -189,7 +174,6 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
         ArrayList<OFAction> actionListOut = new ArrayList<OFAction>();
         
         OFOxms oxms = sw.getOFFactory().oxms();
-        Utils.switchPorts.putIfAbsent(eth.getSourceMACAddress(), pi.getMatch().get(MatchField.IN_PORT));
         
         // Packets directed to the virtual router (ping to 10.0.1.1) -> case 2)
         if(ipv4.getDestinationAddress().compareTo(Utils.VIRTUAL_IP) == 0) {
@@ -248,6 +232,8 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
             byte[] packetData = pi.getData();
             pob.setData(packetData);            
 		} 
+		
+		// Actions and matches for packets coming from Routers to netA
 		
 		ArrayList<OFAction> actionListIn = new ArrayList<OFAction>();
 		Match.Builder mbIn = sw.getOFFactory().buildMatch();
@@ -385,7 +371,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 				if(Utils.master.getMacAddress().compareTo(router.getMacAddress()) == 0) {
 					// Reset the timer
 					resetTimer();
-				} else if(Utils.master.getPriority() < router.getPriority()) { // I have to check if its priority is better than the current master
+				} else if(Utils.master.getPriority() < router.getPriority()) { // Router with better priority is found
 					Utils.master = router;
 					System.out.println("A new master is elected: "+adv[0]);
 					// Reset the timer
@@ -405,6 +391,7 @@ public class VirtualAddressController implements IOFMessageListener, IFloodlight
 						entry.getValue().getPriority() > Utils.master.getPriority())
 					Utils.master = entry.getValue();
 			}
+			// New master is found
 			if(Utils.master.getPriority() != -1) {
 				resetTimer();
 				return Utils.master.getName();
