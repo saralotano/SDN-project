@@ -115,7 +115,7 @@ public class RestController implements IFloodlightModule, IRestController {
 	public void setNumAdv(int newValue){
 		if(newValue <= 0)
 			return;
-		Utils.numAdv = (short) newValue;
+		Utils.numAdv = newValue;
 		System.out.println("Number Advertisement value changed to " + newValue);		
 	}
 	
